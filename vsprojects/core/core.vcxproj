@@ -134,26 +134,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\core\cdriso.cc" />
-    <ClCompile Include="..\..\src\core\cdrom.cc" />
-    <ClCompile Include="..\..\src\core\cheat.cc" />
-    <ClCompile Include="..\..\src\core\debug.cc" />
-    <ClCompile Include="..\..\src\core\decode_xa.cc" />
-    <ClCompile Include="..\..\src\core\disr3000a.cc" />
-    <ClCompile Include="..\..\src\core\gpu.cc" />
-    <ClCompile Include="..\..\src\core\gte.cc" />
-    <ClCompile Include="..\..\src\core\ix86\iR3000A.cc" />
-    <ClCompile Include="..\..\src\core\ix86\ix86.cc" />
-    <ClCompile Include="..\..\src\core\mdec.cc" />
-    <ClCompile Include="..\..\src\core\misc.cc" />
-    <ClCompile Include="..\..\src\core\pad.cc" />
-    <ClCompile Include="..\..\src\core\pgxp_cpu.cc" />
-    <ClCompile Include="..\..\src\core\pgxp_debug.cc" />
-    <ClCompile Include="..\..\src\core\pgxp_gte.cc" />
-    <ClCompile Include="..\..\src\core\pgxp_mem.cc" />
-    <ClCompile Include="..\..\src\core\pgxp_value.cc" />
-    <ClCompile Include="..\..\src\core\plugins.cc" />
-    <ClCompile Include="..\..\src\core\ppf.cc" />
     <ClCompile Include="..\..\src\core\psxbios.cc" />
     <ClCompile Include="..\..\src\core\psxemulator.cc" />
     <ClCompile Include="..\..\src\core\psxcounters.cc" />
@@ -163,33 +143,10 @@
     <ClCompile Include="..\..\src\core\psxinterpreter.cc" />
     <ClCompile Include="..\..\src\core\psxmem.cc" />
     <ClCompile Include="..\..\src\core\r3000a.cc" />
-    <ClCompile Include="..\..\src\core\sio.cc" />
-    <ClCompile Include="..\..\src\core\spu.cc" />
     <ClCompile Include="..\..\src\core\system.cc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\core\cdriso.h" />
-    <ClInclude Include="..\..\src\core\cdrom.h" />
-    <ClInclude Include="..\..\src\core\cheat.h" />
-    <ClInclude Include="..\..\src\core\coff.h" />
-    <ClInclude Include="..\..\src\core\debug.h" />
-    <ClInclude Include="..\..\src\core\decode_xa.h" />
-    <ClInclude Include="..\..\src\core\disr3000a.h" />
-    <ClInclude Include="..\..\src\core\gpu.h" />
-    <ClInclude Include="..\..\src\core\gte.h" />
-    <ClInclude Include="..\..\src\core\ix86\ix86.h" />
     <ClInclude Include="..\..\src\core\logger.h" />
-    <ClInclude Include="..\..\src\core\mdec.h" />
-    <ClInclude Include="..\..\src\core\misc.h" />
-    <ClInclude Include="..\..\src\core\pad.h" />
-    <ClInclude Include="..\..\src\core\pgxp_cpu.h" />
-    <ClInclude Include="..\..\src\core\pgxp_debug.h" />
-    <ClInclude Include="..\..\src\core\pgxp_gte.h" />
-    <ClInclude Include="..\..\src\core\pgxp_mem.h" />
-    <ClInclude Include="..\..\src\core\pgxp_value.h" />
-    <ClInclude Include="..\..\src\core\plugins.h" />
-    <ClInclude Include="..\..\src\core\ppf.h" />
-    <ClInclude Include="..\..\src\core\psemu_plugin_defs.h" />
     <ClInclude Include="..\..\src\core\psxbios.h" />
     <ClInclude Include="..\..\src\core\psxemulator.h" />
     <ClInclude Include="..\..\src\core\psxcounters.h" />
@@ -198,22 +155,7 @@
     <ClInclude Include="..\..\src\core\psxhw.h" />
     <ClInclude Include="..\..\src\core\psxmem.h" />
     <ClInclude Include="..\..\src\core\r3000a.h" />
-    <ClInclude Include="..\..\src\core\sio.h" />
-    <ClInclude Include="..\..\src\core\sjisfont.h" />
-    <ClInclude Include="..\..\src\core\spu.h" />
     <ClInclude Include="..\..\src\core\system.h" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\FFmpeg.Nightly.20181218.0.0\build\native\FFmpeg.Nightly.targets" Condition="Exists('..\packages\FFmpeg.Nightly.20181218.0.0\build\native\FFmpeg.Nightly.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\FFmpeg.Nightly.20181218.0.0\build\native\FFmpeg.Nightly.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\FFmpeg.Nightly.20181218.0.0\build\native\FFmpeg.Nightly.targets'))" />
-  </Target>
 </Project>

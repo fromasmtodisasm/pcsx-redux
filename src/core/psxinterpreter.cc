@@ -21,54 +21,9 @@
  * PSX assembly interpreter.
  */
 
-#include "core/debug.h"
-#include "core/disr3000a.h"
-#include "core/gte.h"
-#include "core/pgxp_cpu.h"
-#include "core/pgxp_debug.h"
-#include "core/pgxp_gte.h"
 #include "core/psxemulator.h"
 #include "core/psxhle.h"
 #include "core/r3000a.h"
-
-/* GTE wrappers */
-#define GTE_WR(n) \
-    void PCSX::InterpretedCPU::gte##n() { PCSX::g_emulator.m_gte->n(); }
-GTE_WR(LWC2);
-GTE_WR(SWC2);
-GTE_WR(RTPS);
-GTE_WR(NCLIP);
-GTE_WR(OP);
-GTE_WR(DPCS);
-GTE_WR(INTPL);
-GTE_WR(MVMVA);
-GTE_WR(NCDS);
-GTE_WR(CDP);
-GTE_WR(NCDT);
-GTE_WR(NCCS);
-GTE_WR(CC);
-GTE_WR(NCS);
-GTE_WR(NCT);
-GTE_WR(SQR);
-GTE_WR(DCPL);
-GTE_WR(DPCT);
-GTE_WR(AVSZ3);
-GTE_WR(AVSZ4);
-GTE_WR(RTPT);
-GTE_WR(GPF);
-GTE_WR(GPL);
-GTE_WR(NCCT);
-GTE_WR(MTC2);
-GTE_WR(CTC2);
-#undef GTE_WR
-
-// These macros are used to assemble the repassembler functions
-
-#define debugI()                                                                                                       \
-    if (PCSX::g_emulator.settings.get<PCSX::Emulator::SettingVerbose>()) {                                             \
-        std::string ins = Disasm::asString(g_emulator.m_psxCpu->m_psxRegs.code, 0, g_emulator.m_psxCpu->m_psxRegs.pc); \
-        PSXCPU_LOG("%s\n", ins.c_str());                                                                               \
-    }
 
 void PCSX::InterpretedCPU::delayRead(int reg, uint32_t bpc) {
     uint32_t rold, rnew;
@@ -439,8 +394,6 @@ int PCSX::InterpretedCPU::psxDelayBranchTest(uint32_t tar1) {
     tar2 = psxBranchNoDelay();
     if (tar2 == (uint32_t)-1) return 0;
 
-    debugI();
-
     /*
      * Branch in delay slot:
      * - execute 1 instruction at tar1
@@ -452,7 +405,6 @@ int PCSX::InterpretedCPU::psxDelayBranchTest(uint32_t tar1) {
     if (tmp1 == (uint32_t)-1) {
         return psxDelayBranchExec(tar2);
     }
-    debugI();
     PCSX::g_emulator.m_psxCpu->m_psxRegs.cycle += PCSX::Emulator::BIAS;
 
     /*
@@ -465,7 +417,6 @@ int PCSX::InterpretedCPU::psxDelayBranchTest(uint32_t tar1) {
     if (tmp2 == (uint32_t)-1) {
         return psxDelayBranchExec(tmp1);
     }
-    debugI();
     PCSX::g_emulator.m_psxCpu->m_psxRegs.cycle += PCSX::Emulator::BIAS;
 
     /*
@@ -491,8 +442,6 @@ inline void PCSX::InterpretedCPU::doBranch(uint32_t tar) {
     code = PCSX::g_emulator.m_psxCpu->Read_ICache(PCSX::g_emulator.m_psxCpu->m_psxRegs.pc, true);
 
     PCSX::g_emulator.m_psxCpu->m_psxRegs.code = ((code == NULL) ? 0 : SWAP_LE32(*code));
-
-    debugI();
 
     PCSX::g_emulator.m_psxCpu->m_psxRegs.pc += 4;
     PCSX::g_emulator.m_psxCpu->m_psxRegs.cycle += PCSX::Emulator::BIAS;
@@ -1060,8 +1009,6 @@ void PCSX::InterpretedCPU::psxMFC2() {
 
         return;
     }
-
-    PCSX::g_emulator.m_gte->MFC2();
 }
 
 void PCSX::InterpretedCPU::psxCFC2() {
@@ -1073,8 +1020,6 @@ void PCSX::InterpretedCPU::psxCFC2() {
 
         return;
     }
-
-    PCSX::g_emulator.m_gte->CFC2();
 }
 
 /*********************************************************
@@ -1090,12 +1035,6 @@ void PCSX::InterpretedCPU::psxSPECIAL() { (*this.*(s_pPsxSPC[_Funct_]))(); }
 void PCSX::InterpretedCPU::psxREGIMM() { (*this.*(s_pPsxREG[_Rt_]))(); }
 
 void PCSX::InterpretedCPU::psxCOP0() { (*this.*(s_pPsxCP0[_Rs_]))(); }
-
-void PCSX::InterpretedCPU::psxCOP2() {
-    if ((PCSX::g_emulator.m_psxCpu->m_psxRegs.CP0.n.Status & 0x40000000) == 0) return;
-
-    (*this.*(s_pPsxCP2[_Funct_]))();
-}
 
 void PCSX::InterpretedCPU::psxBASIC() { (*this.*(s_pPsxCP2BSC[_Rs_]))(); }
 
@@ -1113,7 +1052,7 @@ const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_psxBSC[64] = {
     &InterpretedCPU::psxBEQ,     &InterpretedCPU::psxBNE,    &InterpretedCPU::psxBLEZ, &InterpretedCPU::psxBGTZ,   // 04
     &InterpretedCPU::psxADDI,    &InterpretedCPU::psxADDIU,  &InterpretedCPU::psxSLTI, &InterpretedCPU::psxSLTIU,  // 08
     &InterpretedCPU::psxANDI,    &InterpretedCPU::psxORI,    &InterpretedCPU::psxXORI, &InterpretedCPU::psxLUI,    // 0c
-    &InterpretedCPU::psxCOP0,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxCOP2, &InterpretedCPU::psxNULL,   // 10
+    &InterpretedCPU::psxCOP0,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,   // 10
     &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,   // 14
     &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,   // 18
     &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,   // 1c
@@ -1121,9 +1060,9 @@ const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_psxBSC[64] = {
     &InterpretedCPU::psxLBU,     &InterpretedCPU::psxLHU,    &InterpretedCPU::psxLWR,  &InterpretedCPU::psxNULL,   // 24
     &InterpretedCPU::psxSB,      &InterpretedCPU::psxSH,     &InterpretedCPU::psxSWL,  &InterpretedCPU::psxSW,     // 28
     &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxSWR,  &InterpretedCPU::psxNULL,   // 2c
-    &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::gteLWC2, &InterpretedCPU::psxNULL,   // 30
+    &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,   // 30
     &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,   // 34
-    &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::gteSWC2, &InterpretedCPU::psxHLE,    // 38
+    &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxHLE,    // 38
     &InterpretedCPU::psxNULL,    &InterpretedCPU::psxNULL,   &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,   // 3c
 };
 
@@ -1168,415 +1107,15 @@ const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_psxCP0[32] = {
     &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,  // 1c
 };
 
-const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_psxCP2[64] = {
-    &InterpretedCPU::psxBASIC, &InterpretedCPU::gteRTPS,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 00
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::gteNCLIP, &InterpretedCPU::psxNULL,  // 04
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 08
-    &InterpretedCPU::gteOP,    &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 0c
-    &InterpretedCPU::gteDPCS,  &InterpretedCPU::gteINTPL, &InterpretedCPU::gteMVMVA, &InterpretedCPU::gteNCDS,  // 10
-    &InterpretedCPU::gteCDP,   &InterpretedCPU::psxNULL,  &InterpretedCPU::gteNCDT,  &InterpretedCPU::psxNULL,  // 14
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::gteNCCS,  // 18
-    &InterpretedCPU::gteCC,    &InterpretedCPU::psxNULL,  &InterpretedCPU::gteNCS,   &InterpretedCPU::psxNULL,  // 1c
-    &InterpretedCPU::gteNCT,   &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 20
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 24
-    &InterpretedCPU::gteSQR,   &InterpretedCPU::gteDCPL,  &InterpretedCPU::gteDPCT,  &InterpretedCPU::psxNULL,  // 28
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::gteAVSZ3, &InterpretedCPU::gteAVSZ4, &InterpretedCPU::psxNULL,  // 2c
-    &InterpretedCPU::gteRTPT,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 30
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 34
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  &InterpretedCPU::psxNULL,  // 38
-    &InterpretedCPU::psxNULL,  &InterpretedCPU::gteGPF,   &InterpretedCPU::gteGPL,   &InterpretedCPU::gteNCCT,  // 3c
-};
-
-const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_psxCP2BSC[32] = {
-    &InterpretedCPU::psxMFC2, &InterpretedCPU::psxNULL, &InterpretedCPU::psxCFC2, &InterpretedCPU::psxNULL,  // 00
-    &InterpretedCPU::gteMTC2, &InterpretedCPU::psxNULL, &InterpretedCPU::gteCTC2, &InterpretedCPU::psxNULL,  // 04
-    &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,  // 08
-    &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,  // 0c
-    &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,  // 10
-    &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,  // 14
-    &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,  // 18
-    &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL, &InterpretedCPU::psxNULL,  // 1c
-};
-
-/////////////////////////////////////////////
-// PGXP wrapper functions
-/////////////////////////////////////////////
-
-void PCSX::InterpretedCPU::pgxpPsxNULL() {}
-
-#define psxMTC2 gteMTC2
-#define psxCTC2 gteCTC2
-#define psxLWC2 gteLWC2
-#define psxSWC2 gteSWC2
-
-// Choose between debug and direct function
-#ifdef PGXP_CPU_DEBUG
-#define PGXP_PSX_FUNC_OP(pu, op, nReg) PGXP_psxTraceOp##nReg
-#define PGXP_DBG_OP_E(op) DBG_E_##op,
-#else
-#define PGXP_PSX_FUNC_OP(pu, op, nReg) PGXP_##pu##_##op
-#define PGXP_DBG_OP_E(op)
-#endif
-
-#define PGXP_INT_FUNC(pu, op)                                                                    \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                                                   \
-        PGXP_PSX_FUNC_OP(pu, op, )(PGXP_DBG_OP_E(op) PCSX::g_emulator.m_psxCpu->m_psxRegs.code); \
-        psx##op();                                                                               \
-    }
-
-#define PGXP_INT_FUNC_0_1(pu, op, test, nReg, reg1)                        \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                             \
-        if (test) {                                                        \
-            psx##op();                                                     \
-            return;                                                        \
-        }                                                                  \
-        uint32_t tempInstr = PCSX::g_emulator.m_psxCpu->m_psxRegs.code;    \
-        psx##op();                                                         \
-        PGXP_PSX_FUNC_OP(pu, op, nReg)(PGXP_DBG_OP_E(op) tempInstr, reg1); \
-    }
-
-#define PGXP_INT_FUNC_1_0(pu, op, test, nReg, reg1)                           \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                                \
-        if (test) {                                                           \
-            psx##op();                                                        \
-            return;                                                           \
-        }                                                                     \
-        PGXP_PSX_FUNC_OP(pu, op, nReg)(PGXP_DBG_OP_E(op) psxRegs.code, reg1); \
-        psx##op();                                                            \
-    }
-
-#define PGXP_INT_FUNC_1_1(pu, op, test, nReg, reg1, reg2)                         \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                                    \
-        if (test) {                                                               \
-            psx##op();                                                            \
-            return;                                                               \
-        }                                                                         \
-        uint32_t tempInstr = PCSX::g_emulator.m_psxCpu->m_psxRegs.code;           \
-        uint32_t temp2 = reg2;                                                    \
-        psx##op();                                                                \
-        PGXP_PSX_FUNC_OP(pu, op, nReg)(PGXP_DBG_OP_E(op) tempInstr, reg1, temp2); \
-    }
-
-#define PGXP_INT_FUNC_0_2(pu, op, test, nReg, reg1, reg2)                        \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                                   \
-        if (test) {                                                              \
-            psx##op();                                                           \
-            return;                                                              \
-        }                                                                        \
-        uint32_t tempInstr = PCSX::g_emulator.m_psxCpu->m_psxRegs.code;          \
-        psx##op();                                                               \
-        PGXP_PSX_FUNC_OP(pu, op, nReg)(PGXP_DBG_OP_E(op) tempInstr, reg1, reg2); \
-    }
-
-#define PGXP_INT_FUNC_2_0(pu, op, test, nReg, reg1, reg2)                          \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                                     \
-        if (test) {                                                                \
-            psx##op();                                                             \
-            return;                                                                \
-        }                                                                          \
-        uint32_t tempInstr = PCSX::g_emulator.m_psxCpu->m_psxRegs.code;            \
-        uint32_t temp1 = reg1;                                                     \
-        uint32_t temp2 = reg2;                                                     \
-        psx##op();                                                                 \
-        PGXP_PSX_FUNC_OP(pu, op, nReg)(PGXP_DBG_OP_E(op) tempInstr, temp1, temp2); \
-    }
-
-#define PGXP_INT_FUNC_2_1(pu, op, test, nReg, reg1, reg2, reg3)                          \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                                           \
-        if (test) {                                                                      \
-            psx##op();                                                                   \
-            return;                                                                      \
-        }                                                                                \
-        uint32_t tempInstr = PCSX::g_emulator.m_psxCpu->m_psxRegs.code;                  \
-        uint32_t temp2 = reg2;                                                           \
-        uint32_t temp3 = reg3;                                                           \
-        psx##op();                                                                       \
-        PGXP_PSX_FUNC_OP(pu, op, nReg)(PGXP_DBG_OP_E(op) tempInstr, reg1, temp2, temp3); \
-    }
-
-#define PGXP_INT_FUNC_2_2(pu, op, test, nReg, reg1, reg2, reg3, reg4)                          \
-    void PCSX::InterpretedCPU::pgxpPsx##op() {                                                 \
-        if (test) {                                                                            \
-            psx##op();                                                                         \
-            return;                                                                            \
-        }                                                                                      \
-        uint32_t tempInstr = PCSX::g_emulator.m_psxCpu->m_psxRegs.code;                        \
-        uint32_t temp3 = reg3;                                                                 \
-        uint32_t temp4 = reg4;                                                                 \
-        psx##op();                                                                             \
-        PGXP_PSX_FUNC_OP(pu, op, nReg)(PGXP_DBG_OP_E(op) tempInstr, reg1, reg2, temp3, temp4); \
-    }
-
-// Rt = Rs op imm
-PGXP_INT_FUNC_1_1(CPU, ADDI, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_1_1(CPU, ADDIU, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_1_1(CPU, ANDI, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_1_1(CPU, ORI, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_1_1(CPU, XORI, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_1_1(CPU, SLTI, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_1_1(CPU, SLTIU, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-
-// Rt = imm
-PGXP_INT_FUNC_0_1(CPU, LUI, !_Rt_, 1, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-
-// Rd = Rs op Rt
-PGXP_INT_FUNC_2_1(CPU, ADD, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, ADDU, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, SUB, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, SUBU, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, AND, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, OR, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, XOR, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, NOR, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, SLT, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_1(CPU, SLTU, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-
-// Hi/Lo = Rs op Rt
-PGXP_INT_FUNC_2_2(CPU, MULT, 0, 4, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.hi,
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.lo, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_2(CPU, MULTU, 0, 4, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.hi,
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.lo, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_2(CPU, DIV, 0, 4, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.hi,
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.lo, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_2_2(CPU, DIVU, 0, 4, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.hi,
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.lo, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-
-// Mem[addr] = Rt
-PGXP_INT_FUNC_1_1(CPU, SB, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, SH, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, SW, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, SWL, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, SWR, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-
-// Rt = Mem[addr]
-PGXP_INT_FUNC_1_1(CPU, LWL, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, LW, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, LWR, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, LH, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, LHU, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, LB, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(CPU, LBU, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], _oB_)
-
-// Rd = Rt op Sa
-PGXP_INT_FUNC_1_1(CPU, SLL, !_Rd_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_1_1(CPU, SRL, !_Rd_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_1_1(CPU, SRA, !_Rd_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-
-// Rd = Rt op Rs
-PGXP_INT_FUNC_2_1(CPU, SLLV, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_2_1(CPU, SRLV, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-PGXP_INT_FUNC_2_1(CPU, SRAV, !_Rd_, 3, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_], PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rs_])
-
-PGXP_INT_FUNC_1_1(CPU, MFHI, !_Rd_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.hi)
-PGXP_INT_FUNC_1_1(CPU, MTHI, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.hi,
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_])
-PGXP_INT_FUNC_1_1(CPU, MFLO, !_Rd_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.lo)
-PGXP_INT_FUNC_1_1(CPU, MTLO, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.n.lo,
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rd_])
-
-// COP2 (GTE)
-PGXP_INT_FUNC_1_1(GTE, MFC2, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.CP2D.r[_Rd_])
-PGXP_INT_FUNC_1_1(GTE, CFC2, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.CP2C.r[_Rd_])
-PGXP_INT_FUNC_1_1(GTE, MTC2, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.CP2D.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_1_1(GTE, CTC2, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.CP2C.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-
-PGXP_INT_FUNC_1_1(GTE, LWC2, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.CP2D.r[_Rt_], _oB_)
-PGXP_INT_FUNC_1_1(GTE, SWC2, 0, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.CP2D.r[_Rt_], _oB_)
-
-// COP0
-PGXP_INT_FUNC_1_1(CP0, MFC0, !_Rd_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.CP0.r[_Rd_])
-PGXP_INT_FUNC_1_1(CP0, CFC0, !_Rd_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.CP0.r[_Rd_])
-PGXP_INT_FUNC_1_1(CP0, MTC0, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.CP0.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC_1_1(CP0, CTC0, !_Rt_, 2, PCSX::g_emulator.m_psxCpu->m_psxRegs.CP0.r[_Rd_],
-                  PCSX::g_emulator.m_psxCpu->m_psxRegs.GPR.r[_Rt_])
-PGXP_INT_FUNC(CP0, RFE)
-
-// end of PGXP
-
-// Trace all functions using PGXP
-const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_pgxpPsxBSC[64] = {
-    &InterpretedCPU::psxSPECIAL,  &InterpretedCPU::psxREGIMM,     // 00
-    &InterpretedCPU::psxJ,        &InterpretedCPU::psxJAL,        // 02
-    &InterpretedCPU::psxBEQ,      &InterpretedCPU::psxBNE,        // 04
-    &InterpretedCPU::psxBLEZ,     &InterpretedCPU::psxBGTZ,       // 06
-    &InterpretedCPU::pgxpPsxADDI, &InterpretedCPU::pgxpPsxADDIU,  // 08
-    &InterpretedCPU::pgxpPsxSLTI, &InterpretedCPU::pgxpPsxSLTIU,  // 0a
-    &InterpretedCPU::pgxpPsxANDI, &InterpretedCPU::pgxpPsxORI,    // 0c
-    &InterpretedCPU::pgxpPsxXORI, &InterpretedCPU::pgxpPsxLUI,    // 0e
-    &InterpretedCPU::psxCOP0,     &InterpretedCPU::psxNULL,       // 10
-    &InterpretedCPU::psxCOP2,     &InterpretedCPU::psxNULL,       // 12
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 14
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 16
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 18
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 1a
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 1c
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 1e
-    &InterpretedCPU::pgxpPsxLB,   &InterpretedCPU::pgxpPsxLH,     // 20
-    &InterpretedCPU::pgxpPsxLWL,  &InterpretedCPU::pgxpPsxLW,     // 22
-    &InterpretedCPU::pgxpPsxLBU,  &InterpretedCPU::pgxpPsxLHU,    // 24
-    &InterpretedCPU::pgxpPsxLWR,  &InterpretedCPU::pgxpPsxNULL,   // 26
-    &InterpretedCPU::pgxpPsxSB,   &InterpretedCPU::pgxpPsxSH,     // 28
-    &InterpretedCPU::pgxpPsxSWL,  &InterpretedCPU::pgxpPsxSW,     // 2a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 2c
-    &InterpretedCPU::pgxpPsxSWR,  &InterpretedCPU::pgxpPsxNULL,   // 2e
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 30
-    &InterpretedCPU::pgxpPsxLWC2, &InterpretedCPU::psxNULL,       // 32
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 34
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 36
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 38
-    &InterpretedCPU::pgxpPsxSWC2, &InterpretedCPU::psxHLE,        // 3a
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 3c
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 3e
-};
-
-const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_pgxpPsxSPC[64] = {
-    &InterpretedCPU::pgxpPsxSLL,  &InterpretedCPU::pgxpPsxNULL,   // 00
-    &InterpretedCPU::pgxpPsxSRL,  &InterpretedCPU::pgxpPsxSRA,    // 02
-    &InterpretedCPU::pgxpPsxSLLV, &InterpretedCPU::pgxpPsxNULL,   // 04
-    &InterpretedCPU::pgxpPsxSRLV, &InterpretedCPU::pgxpPsxSRAV,   // 06
-    &InterpretedCPU::psxJR,       &InterpretedCPU::psxJALR,       // 08
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 0a
-    &InterpretedCPU::psxSYSCALL,  &InterpretedCPU::psxBREAK,      // 0c
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,       // 0e
-    &InterpretedCPU::pgxpPsxMFHI, &InterpretedCPU::pgxpPsxMTHI,   // 10
-    &InterpretedCPU::pgxpPsxMFLO, &InterpretedCPU::pgxpPsxMTLO,   // 12
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 14
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 16
-    &InterpretedCPU::pgxpPsxMULT, &InterpretedCPU::pgxpPsxMULTU,  // 18
-    &InterpretedCPU::pgxpPsxDIV,  &InterpretedCPU::pgxpPsxDIVU,   // 1a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 1c
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 1e
-    &InterpretedCPU::pgxpPsxADD,  &InterpretedCPU::pgxpPsxADDU,   // 20
-    &InterpretedCPU::pgxpPsxSUB,  &InterpretedCPU::pgxpPsxSUBU,   // 22
-    &InterpretedCPU::pgxpPsxAND,  &InterpretedCPU::pgxpPsxOR,     // 24
-    &InterpretedCPU::pgxpPsxXOR,  &InterpretedCPU::pgxpPsxNOR,    // 26
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 28
-    &InterpretedCPU::pgxpPsxSLT,  &InterpretedCPU::pgxpPsxSLTU,   // 2a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 2c
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 2e
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 30
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 32
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 34
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 36
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 38
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 3a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 3c
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,   // 3e
-};
-
-const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_pgxpPsxCP0[32] = {
-    &InterpretedCPU::pgxpPsxMFC0, &InterpretedCPU::pgxpPsxNULL,  // 00
-    &InterpretedCPU::pgxpPsxCFC0, &InterpretedCPU::pgxpPsxNULL,  // 02
-    &InterpretedCPU::pgxpPsxMTC0, &InterpretedCPU::pgxpPsxNULL,  // 04
-    &InterpretedCPU::pgxpPsxCTC0, &InterpretedCPU::pgxpPsxNULL,  // 06
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 08
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 0a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 0c
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 0e
-    &InterpretedCPU::pgxpPsxRFE,  &InterpretedCPU::pgxpPsxNULL,  // 10
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 12
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 14
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 16
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 18
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 1a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 1c
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 1e
-};
-
-const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_pgxpPsxCP2BSC[32] = {
-    &InterpretedCPU::pgxpPsxMFC2, &InterpretedCPU::pgxpPsxNULL,  // 00
-    &InterpretedCPU::pgxpPsxCFC2, &InterpretedCPU::pgxpPsxNULL,  // 02
-    &InterpretedCPU::pgxpPsxMTC2, &InterpretedCPU::pgxpPsxNULL,  // 04
-    &InterpretedCPU::pgxpPsxCTC2, &InterpretedCPU::pgxpPsxNULL,  // 06
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 08
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 0a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 0c
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 0e
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 10
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 12
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 14
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 16
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 18
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 1a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 1c
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 1e
-};
-
-// Trace memory functions only
-const PCSX::InterpretedCPU::intFunc_t PCSX::InterpretedCPU::s_pgxpPsxBSCMem[64] = {
-    &InterpretedCPU::psxSPECIAL,  &InterpretedCPU::psxREGIMM,    // 00
-    &InterpretedCPU::psxJ,        &InterpretedCPU::psxJAL,       // 02
-    &InterpretedCPU::psxBEQ,      &InterpretedCPU::psxBNE,       // 04
-    &InterpretedCPU::psxBLEZ,     &InterpretedCPU::psxBGTZ,      // 06
-    &InterpretedCPU::psxADDI,     &InterpretedCPU::psxADDIU,     // 08
-    &InterpretedCPU::psxSLTI,     &InterpretedCPU::psxSLTIU,     // 0a
-    &InterpretedCPU::psxANDI,     &InterpretedCPU::psxORI,       // 0c
-    &InterpretedCPU::psxXORI,     &InterpretedCPU::psxLUI,       // 0e
-    &InterpretedCPU::psxCOP0,     &InterpretedCPU::psxNULL,      // 10
-    &InterpretedCPU::psxCOP2,     &InterpretedCPU::psxNULL,      // 12
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 14
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 16
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 18
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 1a
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 1c
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 1e
-    &InterpretedCPU::pgxpPsxLB,   &InterpretedCPU::pgxpPsxLH,    // 20
-    &InterpretedCPU::pgxpPsxLWL,  &InterpretedCPU::pgxpPsxLW,    // 22
-    &InterpretedCPU::pgxpPsxLBU,  &InterpretedCPU::pgxpPsxLHU,   // 24
-    &InterpretedCPU::pgxpPsxLWR,  &InterpretedCPU::pgxpPsxNULL,  // 26
-    &InterpretedCPU::pgxpPsxSB,   &InterpretedCPU::pgxpPsxSH,    // 28
-    &InterpretedCPU::pgxpPsxSWL,  &InterpretedCPU::pgxpPsxSW,    // 2a
-    &InterpretedCPU::pgxpPsxNULL, &InterpretedCPU::pgxpPsxNULL,  // 2c
-    &InterpretedCPU::pgxpPsxSWR,  &InterpretedCPU::pgxpPsxNULL,  // 2e
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 30
-    &InterpretedCPU::pgxpPsxLWC2, &InterpretedCPU::psxNULL,      // 32
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 34
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 36
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 38
-    &InterpretedCPU::pgxpPsxSWC2, &InterpretedCPU::psxHLE,       // 3a
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 3c
-    &InterpretedCPU::psxNULL,     &InterpretedCPU::psxNULL,      // 3e
-};
-
 ///////////////////////////////////////////
 
-bool PCSX::InterpretedCPU::Init() { return true; }
+bool PCSX::InterpretedCPU::Init() {
+    s_pPsxBSC = s_psxBSC;
+    s_pPsxSPC = s_psxSPC;
+    s_pPsxREG = s_psxREG;
+    s_pPsxCP0 = s_psxCP0;
+    return true;
+}
 void PCSX::InterpretedCPU::Reset() { PCSX::g_emulator.m_psxCpu->m_psxRegs.ICache_valid = false; }
 void PCSX::InterpretedCPU::Execute() {
     while (PCSX::g_system->running()) execI();
@@ -1593,45 +1132,9 @@ inline void PCSX::InterpretedCPU::execI() {
     uint32_t *code = PCSX::g_emulator.m_psxCpu->Read_ICache(PCSX::g_emulator.m_psxCpu->m_psxRegs.pc, false);
     PCSX::g_emulator.m_psxCpu->m_psxRegs.code = ((code == NULL) ? 0 : SWAP_LE32(*code));
 
-    debugI();
-
-    if (PCSX::g_emulator.settings.get<PCSX::Emulator::SettingDebug>()) PCSX::g_emulator.m_debug->ProcessDebug();
-
     PCSX::g_emulator.m_psxCpu->m_psxRegs.pc += 4;
     PCSX::g_emulator.m_psxCpu->m_psxRegs.cycle += PCSX::Emulator::BIAS;
 
     cIntFunc_t func = s_pPsxBSC[PCSX::g_emulator.m_psxCpu->m_psxRegs.code >> 26];
     (*this.*func)();
-}
-
-void PCSX::InterpretedCPU::SetPGXPMode(uint32_t pgxpMode) {
-    switch (pgxpMode) {
-        case 0:  // PGXP_MODE_DISABLED:
-            s_pPsxBSC = s_psxBSC;
-            s_pPsxSPC = s_psxSPC;
-            s_pPsxREG = s_psxREG;
-            s_pPsxCP0 = s_psxCP0;
-            s_pPsxCP2 = s_psxCP2;
-            s_pPsxCP2BSC = s_psxCP2BSC;
-            break;
-        case 1:  // PGXP_MODE_MEM:
-            s_pPsxBSC = s_pgxpPsxBSCMem;
-            s_pPsxSPC = s_psxSPC;
-            s_pPsxREG = s_psxREG;
-            s_pPsxCP0 = s_pgxpPsxCP0;
-            s_pPsxCP2 = s_psxCP2;
-            s_pPsxCP2BSC = s_pgxpPsxCP2BSC;
-            break;
-        case 2:  // PGXP_MODE_FULL:
-            s_pPsxBSC = s_pgxpPsxBSC;
-            s_pPsxSPC = s_pgxpPsxSPC;
-            s_pPsxREG = s_psxREG;
-            s_pPsxCP0 = s_pgxpPsxCP0;
-            s_pPsxCP2 = s_psxCP2;
-            s_pPsxCP2BSC = s_pgxpPsxCP2BSC;
-            break;
-    }
-
-    // reset to ensure new func tables are used
-    InterpretedCPU::Reset();
 }

@@ -35,7 +35,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <time.h>
-#include <zlib.h>
 
 #include <filesystem>
 #include <memory>
@@ -80,18 +79,10 @@ typedef intptr_t ssize_t;
 namespace PCSX {
 
 class Bios;
-class CDRom;
-class Cheats;
 class Counters;
-class Debug;
-class GPU;
-class GTE;
 class HW;
-class MDEC;
 class Memory;
-class PAD;
 class R3000Acpu;
-class SIO;
 class System;
 
 namespace SPU {
@@ -181,17 +172,7 @@ class Emulator {
     std::unique_ptr<R3000Acpu> m_psxCpu;
     std::unique_ptr<Counters> m_psxCounters;
     std::unique_ptr<Bios> m_psxBios;
-    std::unique_ptr<GTE> m_gte;
-    std::unique_ptr<SIO> m_sio;
-    std::unique_ptr<CDRom> m_cdrom;
-    std::unique_ptr<Cheats> m_cheats;
-    std::unique_ptr<MDEC> m_mdec;
-    std::unique_ptr<GPU> m_gpu;
-    std::unique_ptr<Debug> m_debug;
     std::unique_ptr<HW> m_hw;
-    std::unique_ptr<SPU::impl> m_spu;
-    std::unique_ptr<PAD> m_pad1;
-    std::unique_ptr<PAD> m_pad2;
 
     static Emulator& getEmulator() {
         static Emulator emulator;
@@ -209,8 +190,4 @@ extern Emulator& g_emulator;
 
 }  // namespace PCSX
 
-#define gzfreeze(ptr, size)                   \
-    {                                         \
-        if (Mode == 1) gzwrite(f, ptr, size); \
-        if (Mode == 0) gzread(f, ptr, size);  \
-    }
+#define gzfreeze(ptr, size) {}

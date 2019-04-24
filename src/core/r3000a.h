@@ -263,7 +263,6 @@ class R3000Acpu {
     virtual void ExecuteBlock() = 0; /* executes up to a jump */
     virtual void Clear(uint32_t Addr, uint32_t Size) = 0;
     virtual void Shutdown() = 0;
-    virtual void SetPGXPMode(uint32_t pgxpMode) = 0;
     virtual bool Implemented() { return false; }
 
     const std::string &getName() { return m_name; }
@@ -276,8 +275,6 @@ class R3000Acpu {
     void psxBranchTest();
     void psxExecuteBios();
     void psxJumpTest();
-
-    void psxSetPGXPMode(uint32_t pgxpMode);
 
     psxRegisters m_psxRegs;
 
@@ -392,7 +389,6 @@ class InterpretedCPU : public R3000Acpu {
     virtual void ExecuteBlock() override;
     virtual void Clear(uint32_t Addr, uint32_t Size) override;
     virtual void Shutdown() override;
-    virtual void SetPGXPMode(uint32_t pgxpMode) override;
 
   protected:
     InterpretedCPU(const std::string &name) : R3000Acpu(name) {}
@@ -538,118 +534,18 @@ class InterpretedCPU : public R3000Acpu {
     void psxSPECIAL();
     void psxREGIMM();
     void psxCOP0();
-    void psxCOP2();
     void psxBASIC();
     void psxHLE();
-
-    /* GTE wrappers */
-#define GTE_WR(n) void gte##n();
-    GTE_WR(LWC2);
-    GTE_WR(SWC2);
-    GTE_WR(RTPS);
-    GTE_WR(NCLIP);
-    GTE_WR(OP);
-    GTE_WR(DPCS);
-    GTE_WR(INTPL);
-    GTE_WR(MVMVA);
-    GTE_WR(NCDS);
-    GTE_WR(CDP);
-    GTE_WR(NCDT);
-    GTE_WR(NCCS);
-    GTE_WR(CC);
-    GTE_WR(NCS);
-    GTE_WR(NCT);
-    GTE_WR(SQR);
-    GTE_WR(DCPL);
-    GTE_WR(DPCT);
-    GTE_WR(AVSZ3);
-    GTE_WR(AVSZ4);
-    GTE_WR(RTPT);
-    GTE_WR(GPF);
-    GTE_WR(GPL);
-    GTE_WR(NCCT);
-    GTE_WR(MTC2);
-    GTE_WR(CTC2);
-#undef GTE_WR
 
     static const intFunc_t s_psxBSC[64];
     static const intFunc_t s_psxSPC[64];
     static const intFunc_t s_psxREG[32];
     static const intFunc_t s_psxCP0[32];
-    static const intFunc_t s_psxCP2[64];
-    static const intFunc_t s_psxCP2BSC[32];
-
-    void pgxpPsxNULL();
-    void pgxpPsxADDI();
-    void pgxpPsxADDIU();
-    void pgxpPsxANDI();
-    void pgxpPsxORI();
-    void pgxpPsxXORI();
-    void pgxpPsxSLTI();
-    void pgxpPsxSLTIU();
-    void pgxpPsxLUI();
-    void pgxpPsxADD();
-    void pgxpPsxADDU();
-    void pgxpPsxSUB();
-    void pgxpPsxSUBU();
-    void pgxpPsxAND();
-    void pgxpPsxOR();
-    void pgxpPsxXOR();
-    void pgxpPsxNOR();
-    void pgxpPsxSLT();
-    void pgxpPsxSLTU();
-    void pgxpPsxMULT();
-    void pgxpPsxMULTU();
-    void pgxpPsxDIV();
-    void pgxpPsxDIVU();
-    void pgxpPsxSB();
-    void pgxpPsxSH();
-    void pgxpPsxSW();
-    void pgxpPsxSWL();
-    void pgxpPsxSWR();
-    void pgxpPsxLWL();
-    void pgxpPsxLW();
-    void pgxpPsxLWR();
-    void pgxpPsxLH();
-    void pgxpPsxLHU();
-    void pgxpPsxLB();
-    void pgxpPsxLBU();
-    void pgxpPsxSLL();
-    void pgxpPsxSRL();
-    void pgxpPsxSRA();
-    void pgxpPsxSLLV();
-    void pgxpPsxSRLV();
-    void pgxpPsxSRAV();
-    void pgxpPsxMFHI();
-    void pgxpPsxMTHI();
-    void pgxpPsxMFLO();
-    void pgxpPsxMTLO();
-    void pgxpPsxMFC2();
-    void pgxpPsxCFC2();
-    void pgxpPsxMTC2();
-    void pgxpPsxCTC2();
-    void pgxpPsxLWC2();
-    void pgxpPsxSWC2();
-    void pgxpPsxMFC0();
-    void pgxpPsxCFC0();
-    void pgxpPsxMTC0();
-    void pgxpPsxCTC0();
-    void pgxpPsxRFE();
-
-    static const intFunc_t s_pgxpPsxBSC[64];
-    static const intFunc_t s_pgxpPsxSPC[64];
-    static const intFunc_t s_pgxpPsxCP0[32];
-    static const intFunc_t s_pgxpPsxCP2BSC[32];
-    static const intFunc_t s_pgxpPsxBSCMem[64];
 };
 
 class Cpus {
   public:
     static std::unique_ptr<R3000Acpu> Interpreted();
-    static std::unique_ptr<R3000Acpu> DynaRec();
-
-  private:
-    static std::unique_ptr<R3000Acpu> getX86DynaRec();
 };
 
 }  // namespace PCSX
